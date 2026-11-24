@@ -134,6 +134,13 @@ Another example:
 python main.py --query "Artificial Intelligence Market Trends"
 ```
 
+### Mock execution (no OpenAI API credits required)
+
+python main.py --query "Tech Sector Q3 Analysis" --mock
+
+Mock mode generates simulated outputs for testing.
+It does not execute real AI agents or perform live research.
+
 ## Generated Outputs
 
 After a successful execution:

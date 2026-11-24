@@ -1,5 +1,6 @@
 
 from crewai import Crew, LLM, Process
+from httpx2 import query
 
 from config.settings import MODEL_NAME, MANAGER_MODEL
 from crew.agents import (
@@ -31,8 +32,8 @@ def create_market_research_crew(
     )
 
     research_task = create_research_task(query)
-    analysis_task = create_analysis_task(query)
-    writing_task = create_writing_task(query)
+    analysis_task = create_analysis_task(query, research_task)
+    writing_task = create_writing_task(query, research_task, analysis_task)
 
     def task_callback(task_output):
         """Record completed task information."""

@@ -21,10 +21,11 @@ def create_research_task(query: str) -> Task:
     )
 
 
-def create_analysis_task(query: str) -> Task:
+def create_analysis_task(query: str, research_task: Task) -> Task:
     """Create the financial analysis task."""
 
     return Task(
+        context=[research_task],
         description=(
             f"Analyze financial information related to: {query}\n\n"
             "Use the Financial Data Analyzer tool to analyze "
@@ -41,10 +42,15 @@ def create_analysis_task(query: str) -> Task:
     )
 
 
-def create_writing_task(query: str) -> Task:
+def create_writing_task(
+    query: str,
+    research_task: Task,
+    analysis_task: Task,
+) -> Task:
     """Create the final market research report task."""
 
     return Task(
+        context=[research_task, analysis_task],
         description=(
             f"Prepare a professional market research report about: {query}\n\n"
             "Organize the report into an executive summary, market overview, "

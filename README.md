@@ -73,7 +73,7 @@ multi-agent-market-research/
 ### 1. Clone the repository
 
 ```bash
-git clone YOUR_GITHUB_REPOSITORY_URL
+git clone https://github.com/yeswanth-k15/multi-agent-market-research.git
 cd multi-agent-market-research
 ```
 

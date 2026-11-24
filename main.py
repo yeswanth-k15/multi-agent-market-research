@@ -2,11 +2,13 @@
 import argparse
 import sys
 
+from services.mock_workflow import generate_mock_report
 from crew.crew import create_market_research_crew
 from services.benchmark import BenchmarkTracker
 from services.markdown_generator import MarkdownReportGenerator
 from services.report_generator import MarketReportGenerator
 from config.settings import OUTPUT_DIR, BASE_DIR
+
 
 
 def parse_arguments():
@@ -23,7 +25,14 @@ def parse_arguments():
         help="Market research topic to investigate.",
     )
 
+    parser.add_argument(
+        "--mock",
+        action="store_true",
+        help="Run with simulated agent responses without calling an LLM.",
+    )
+
     return parser.parse_args()
+
 
 
 def main():
@@ -49,17 +58,38 @@ def main():
     benchmark.start()
 
     try:
-        crew = create_market_research_crew(
-            query=query,
-            benchmark=benchmark,
-        )
+        if args.mock:
+            print("Starting MOCK research workflow...\n")
 
-        print("Starting hierarchical research workflow...\n")
+            report_content = generate_mock_report(query)
 
-        result = crew.kickoff()
+            benchmark.record_task(
+                task_name="Simulated market research",
+                agent_name="Mock Lead Researcher",
+            )
 
-        report_content = str(result)
+            benchmark.record_task(
+                task_name="Simulated financial analysis",
+                agent_name="Mock Financial Analyst",
+            )
 
+            benchmark.record_task(
+                task_name="Simulated report writing",
+                agent_name="Mock Technical Writer",
+            )
+
+        else:
+            print("Starting hierarchical research workflow...\n")
+
+            crew = create_market_research_crew(
+                query=query,
+                benchmark=benchmark,
+            )
+
+            result = crew.kickoff()
+            report_content = str(result)
+
+        # Generate reports in BOTH mock and real modes.
         markdown_generator = MarkdownReportGenerator(
             str(OUTPUT_DIR / "market_report.md")
         )

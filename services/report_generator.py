@@ -1,7 +1,9 @@
+
 from xml.sax.saxutils import escape
 from datetime import datetime
 from pathlib import Path
 
+from reportlab.pdfgen import canvas as pdf_canvas
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
@@ -63,7 +65,6 @@ class MarketReportGenerator:
             )
         )
 
-    
     def _header_footer(self, canvas, document):
         """Draw the report header and footer."""
 
@@ -98,7 +99,6 @@ class MarketReportGenerator:
 
         canvas.restoreState()
 
-    
     def _build_markdown_table(self, rows):
         """Convert Markdown table rows into a ReportLab table."""
 
@@ -159,8 +159,12 @@ class MarketReportGenerator:
 
         table.setStyle(
             TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0),
-                 colors.HexColor("#17365D")),
+                (
+                    "BACKGROUND",
+                    (0, 0),
+                    (-1, 0),
+                    colors.HexColor("#17365D"),
+                ),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -172,7 +176,6 @@ class MarketReportGenerator:
         )
 
         return table
-
 
     def generate(self, query: str, markdown_content: str) -> Path:
         """Generate a PDF report with accurate page numbering."""
@@ -199,7 +202,7 @@ class MarketReportGenerator:
 
         story.append(
             Paragraph(
-                f"<b>Research Topic:</b> {query}",
+                f"<b>Research Topic:</b> {escape(query)}",
                 self.styles["ReportBody"],
             )
         )
@@ -214,119 +217,122 @@ class MarketReportGenerator:
 
         story.append(Spacer(1, 10))
 
-        for line in markdown_content.splitlines(): 
-            lines = markdown_content.splitlines()
-            index = 0
+        lines = markdown_content.splitlines()
+        index = 0
 
-            while index < len(lines):
-                line = lines[index].strip()
+        while index < len(lines):
+            line = lines[index].strip()
 
-                if not line:
-                    story.append(Spacer(1, 5))
-                    index += 1
-                    continue
-                    
-                # Markdown table handling
-                if line.startswith("|"):
-                    table_rows = []
-
-                    while (
-                        index < len(lines)
-                        and lines[index].strip().startswith("|")
-                    ):
-                        table_rows.append(lines[index].strip())
-                        index += 1
-
-                    table = self._build_markdown_table(table_rows)
-
-                    if table:
-                        story.append(Spacer(1, 6))
-                        story.append(table)
-                        story.append(Spacer(1, 8))
-
-                    continue
-
-                if line.startswith("# "):
-                    story.append(
-                        Paragraph(
-                            line[2:],
-                            self.styles["Heading1"],
-                        )
-                    )
-
-
-                elif line.startswith("## "):
-                    story.append(
-                        Paragraph(
-                            line[3:],
-                            self.styles["SectionHeading"],
-                        )
-                    )
-
-                elif line.startswith("### "):
-                    story.append(
-                        Paragraph(
-                            line[4:],
-                            self.styles["Heading3"],
-                        )
-                    )
-
-                elif line.startswith(("- ", "* ")):
-                    story.append(
-                        Paragraph(
-                            f"&bull; {escape(line[2:])}",
-                            self.styles["ReportBody"],
-                        )
-                    )
-
-                else:
-                    story.append(
-                        Paragraph(
-                            escape(line),
-                            self.styles["ReportBody"],
-                        )
-                    )
-
+            if not line:
+                story.append(Spacer(1, 5))
                 index += 1
+                continue
 
-        class NumberedCanvas:
+            # Markdown table handling
+            if line.startswith("|"):
+                table_rows = []
+
+                while (
+                    index < len(lines)
+                    and lines[index].strip().startswith("|")
+                ):
+                    table_rows.append(lines[index].strip())
+                    index += 1
+
+                table = self._build_markdown_table(table_rows)
+
+                if table:
+                    story.append(Spacer(1, 6))
+                    story.append(table)
+                    story.append(Spacer(1, 8))
+
+                continue
+
+            if line.startswith("# "):
+                story.append(
+                    Paragraph(
+                        escape(line[2:]),
+                        self.styles["Heading1"],
+                    )
+                )
+
+            elif line.startswith("## "):
+                story.append(
+                    Paragraph(
+                        escape(line[3:]),
+                        self.styles["SectionHeading"],
+                    )
+                )
+
+            elif line.startswith("### "):
+                story.append(
+                    Paragraph(
+                        escape(line[4:]),
+                        self.styles["Heading3"],
+                    )
+                )
+
+            elif line.startswith(("- ", "* ")):
+                story.append(
+                    Paragraph(
+                        f"&bull; {escape(line[2:])}",
+                        self.styles["ReportBody"],
+                    )
+                )
+
+            else:
+                story.append(
+                    Paragraph(
+                        escape(line),
+                        self.styles["ReportBody"],
+                    )
+                )
+
+            index += 1
+
+        class NumberedCanvas(pdf_canvas.Canvas):
             """Canvas that adds total page count."""
 
             def __init__(self, *args, **kwargs):
-                from reportlab.pdfgen import canvas as pdf_canvas
-
-                self.canvas = pdf_canvas.Canvas(*args, **kwargs)
+                super().__init__(*args, **kwargs)
                 self.saved_page_states = []
 
-            def __getattr__(self, name):
-                return getattr(self.canvas, name)
-
             def showPage(self):
+                """Save the current page state before moving to the next page."""
+
                 self.saved_page_states.append(
-                    dict(self.canvas.__dict__)
+                    dict(self.__dict__)
                 )
-                self.canvas._startPage()
+
+                self._startPage()
 
             def save(self):
+                """Draw page numbers after calculating the total page count."""
+
                 total_pages = len(self.saved_page_states)
-                self.page_count = total_pages
 
                 for state in self.saved_page_states:
-                    self.canvas.__dict__.update(state)
-                    self._header_footer(total_pages)
-                    self.canvas.showPage()
+                    self.__dict__.update(state)
 
-                self.canvas.save()
+                    self._header_footer(total_pages)
+
+                    pdf_canvas.Canvas.showPage(self)
+
+                pdf_canvas.Canvas.save(self)
 
             def _header_footer(self, total_pages):
-                self.canvas.saveState()
+                """Draw the report header and footer."""
+
+                self.saveState()
 
                 width, height = A4
 
-                self.canvas.setFillColor(
+                # Header banner
+                self.setFillColor(
                     colors.HexColor("#17365D")
                 )
-                self.canvas.rect(
+
+                self.rect(
                     0,
                     height - 8 * mm,
                     width,
@@ -335,23 +341,27 @@ class MarketReportGenerator:
                     stroke=0,
                 )
 
-                self.canvas.setFont("Helvetica", 8)
-                self.canvas.setFillColor(colors.grey)
+                # Footer
+                self.setFont("Helvetica", 8)
+                self.setFillColor(colors.grey)
 
-                self.canvas.drawString(
+                self.drawString(
                     20 * mm,
                     12 * mm,
                     "Confidential | Market Research Report",
                 )
 
-                self.canvas.drawRightString(
+                self.drawRightString(
                     width - 20 * mm,
                     12 * mm,
-                    f"Page {self.canvas.getPageNumber()} of {total_pages}",
+                    f"Page {self.getPageNumber()} of {total_pages}",
                 )
 
-                self.canvas.restoreState()
+                self.restoreState()
 
-        document.build(story, canvasmaker=NumberedCanvas)
+        document.build(
+            story,
+            canvasmaker=NumberedCanvas,
+        )
 
         return self.output_path

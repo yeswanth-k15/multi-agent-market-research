@@ -1,0 +1,30 @@
+
+# Environment variables and secrets
+.env
+.env.*
+
+# Keep the example configuration
+!.env.example
+
+# Python virtual environments
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+
+# Generated reports
+output/*.pdf
+output/*.md
+benchmarks.json

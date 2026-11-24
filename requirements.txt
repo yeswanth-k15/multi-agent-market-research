@@ -1,0 +1,2 @@
+tavily-python==0.8.5
+pypdf
